@@ -12,16 +12,19 @@ namespace AuthDotnetCoreJwt.Repositories
     {
         private readonly UserManager<AppUser> _userManager;
         private readonly IConfiguration _config;
+        private readonly IEmailRepository _emailRepository;
         private readonly ILogger<AuthRepository> _logger;
 
         public AuthRepository(
             UserManager<AppUser> userManager,
             IConfiguration config,
-            ILogger<AuthRepository> logger)
+            ILogger<AuthRepository> logger,
+            IEmailRepository emailRepository)
         {
             _userManager = userManager;
             _config = config;
             _logger = logger;
+            _emailRepository = emailRepository;
         }
 
 
@@ -44,7 +47,8 @@ namespace AuthDotnetCoreJwt.Repositories
             var user = new AppUser { 
                 FullName = req.FullName,
                 Email = req.Email,
-                UserName = req.Email
+                UserName = req.Email,
+                EmailConfirmed = false
             };
 
             var result = await _userManager.CreateAsync(user, req.Password);
@@ -61,9 +65,22 @@ namespace AuthDotnetCoreJwt.Repositories
             // assign default role
             await _userManager.AddToRoleAsync(user, "User");
 
-            var token = await GenerateJwtToken(user);
+            //var token = await GenerateJwtToken(user);
 
-            return await GenerateAuthResponse(user, token);
+            // Generate email verification url
+            var verifyUrl = await GetEmailVerificationUrl(user);
+
+            await _emailRepository.SendEmailAsync(
+                user.Email,
+                "Verify your email",
+                $"Click here to verify your email: {verifyUrl}"
+            );
+
+            return new AuthResponseDto
+            {
+                Success = true,
+                Errors = new List<string> { "Registration successful. Please verify your email." }
+            };
         }
 
         // =========================
@@ -97,9 +114,105 @@ namespace AuthDotnetCoreJwt.Repositories
                 };
             }
 
+            if (!user.EmailConfirmed)
+            {
+                return new AuthResponseDto
+                {
+                    Success = false,
+                    Errors = new List<string> { "Email not verified" }
+                };
+            }
+
             var token = await GenerateJwtToken(user);
 
             return await GenerateAuthResponse(user, token);
+        }
+
+        // =========================
+        // Email Confirmation
+        // =========================
+        public async Task<AuthResponseDto> ConfirmEmailAsync(string email, string token)
+        {
+            var user = await _userManager.FindByEmailAsync(email);
+
+            if (user == null)
+            {
+                return new AuthResponseDto
+                {
+                    Success = false,
+                    Errors = new List<string> { "Invalid request" }
+                };
+            }
+
+            var decodedToken = Uri.UnescapeDataString(token);
+
+            var result = await _userManager.ConfirmEmailAsync(user, decodedToken);
+
+            if (!result.Succeeded)
+            {
+                return new AuthResponseDto
+                {
+                    Success = false,
+                    Errors = new List<string> { "Invalid or expired token" }
+                };
+            }
+
+            return new AuthResponseDto
+            {
+                Success = true,
+                Errors = new List<string> { "Email verified successfully" }
+            };
+        }
+
+        // =========================
+        // Resend Confirmation
+        // =========================
+        public async Task<AuthResponseDto> ResendVerificationAsync(string email)
+        {
+            if (string.IsNullOrWhiteSpace(email))
+            {
+                return new AuthResponseDto
+                {
+                    Success = false,
+                    Errors = new List<string> { "Email is required" }
+                };
+            }
+
+            var user = await _userManager.FindByEmailAsync(email);
+
+            if (user == null)
+            {
+                // security best practice (do not reveal user existence)
+                return new AuthResponseDto
+                {
+                    Success = true,
+                    Errors = new List<string> { "If email exists, verification link has been sent." }
+                };
+            }
+
+            if (user.EmailConfirmed)
+            {
+                return new AuthResponseDto
+                {
+                    Success = false,
+                    Errors = new List<string> { "Email is already verified." }
+                };
+            }
+
+            // Generate email verification url
+            var verifyUrl = await GetEmailVerificationUrl(user);
+
+            await _emailRepository.SendEmailAsync(
+                user.Email,
+                "Verify your email",
+                $"Click here to verify your email: {verifyUrl}"
+            );
+
+            return new AuthResponseDto
+            {
+                Success = true,
+                Errors = new List<string> { "Verification email sent." }
+            };
         }
 
         // =========================
@@ -162,6 +275,17 @@ namespace AuthDotnetCoreJwt.Repositories
                 ExpiresAt = expiry,
                 User = userDto
             };
+        }
+
+        // =========================
+        // Get Email Verification URL
+        // =========================
+        private async Task<string> GetEmailVerificationUrl(AppUser? user) {
+            var emailConfirmationtoken = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+            var encodedToken = Uri.EscapeDataString(emailConfirmationtoken);
+
+            var verifyUrl = $"{_config["App:BaseUrl"]}/api/auth/confirm-email?email={user.Email}&token={encodedToken}";
+            return verifyUrl;
         }
     }
 }

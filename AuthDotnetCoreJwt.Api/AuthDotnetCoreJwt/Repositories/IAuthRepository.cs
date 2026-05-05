@@ -1,5 +1,6 @@
 ﻿using AuthDotnetCoreJwt.Models.Domain;
 using AuthDotnetCoreJwt.Models.Dto;
+using Microsoft.AspNetCore.Mvc;
 
 namespace AuthDotnetCoreJwt.Repositories
 {
@@ -8,5 +9,9 @@ namespace AuthDotnetCoreJwt.Repositories
         Task<AuthResponseDto> RegisterAsync(RegisterRequestDto req);
 
         Task<AuthResponseDto> LoginAsync(LoginRequestDto req);
+
+        Task<AuthResponseDto> ConfirmEmailAsync(string email, string token);
+
+        Task<AuthResponseDto> ResendVerificationAsync(string email);
     }
 }

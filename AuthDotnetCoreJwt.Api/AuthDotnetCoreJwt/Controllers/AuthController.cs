@@ -46,5 +46,35 @@ namespace AuthDotnetCoreJwt.Controllers
 
             return Ok(response);
         }
+
+        // GET : {apibaseurl}/api/auth/confirm-email
+        [HttpGet]
+        [Route("confirm-email")]
+        public async Task<IActionResult> ConfirmEmail([FromQuery] string email, [FromQuery] string token)
+        {
+            var result = await _authRepository.ConfirmEmailAsync(email, token);
+
+            if (!result.Success)
+                return BadRequest(result);
+
+            return Ok(new
+            {
+                success = true,
+                message = "Email verified successfully"
+            });
+        }
+
+        // POST : {apibaseurl}/api/auth/resend-verification
+        [HttpPost]
+        [Route("resend-verification")]
+        public async Task<IActionResult> ResendVerification([FromBody] ResendVerificationRequestDto req)
+        {
+            var result = await _authRepository.ResendVerificationAsync(req.Email);
+
+            if (!result.Success)
+                return BadRequest(result);
+
+            return Ok(result);
+        }
     }
 }
