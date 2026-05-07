@@ -2,7 +2,7 @@ using AuthDotnetCoreJwt.Data;
 using AuthDotnetCoreJwt.Data.Seeders;
 using AuthDotnetCoreJwt.Middleware;
 using AuthDotnetCoreJwt.Models.Domain;
-using AuthDotnetCoreJwt.Models.Dto;
+using AuthDotnetCoreJwt.Models.Dto.Auth;
 using AuthDotnetCoreJwt.Repositories;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;

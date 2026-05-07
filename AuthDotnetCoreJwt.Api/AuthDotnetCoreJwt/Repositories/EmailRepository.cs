@@ -1,5 +1,5 @@
 ﻿using AuthDotnetCoreJwt.Models;
-using AuthDotnetCoreJwt.Models.Dto;
+using AuthDotnetCoreJwt.Models.Dto.Auth;
 using MailKit.Net.Smtp;
 using MailKit.Security;
 using Microsoft.Extensions.Options;

@@ -1,4 +1,4 @@
-﻿namespace AuthDotnetCoreJwt.Models.Dto
+﻿namespace AuthDotnetCoreJwt.Models.Dto.Auth
 {
     public class AppUserDto
     {

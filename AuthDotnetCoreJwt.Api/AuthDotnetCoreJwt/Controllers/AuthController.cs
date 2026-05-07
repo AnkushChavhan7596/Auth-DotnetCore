@@ -1,4 +1,5 @@
-﻿using AuthDotnetCoreJwt.Models.Dto;
+﻿using AuthDotnetCoreJwt.Models.Dto.Auth;
+using AuthDotnetCoreJwt.Models.Dto.Common;
 using AuthDotnetCoreJwt.Repositories;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -21,7 +22,15 @@ namespace AuthDotnetCoreJwt.Controllers
         public async Task<IActionResult> Register([FromBody] RegisterRequestDto request)
         {
             if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+                return BadRequest(new ApiResponseDto<object>
+                {
+                    Success = false,
+                    Message = "Validation failed",
+                    Errors = ModelState.Values
+                    .SelectMany(v => v.Errors)
+                    .Select(e => e.ErrorMessage)
+                    .ToList()
+                });
 
             var response = await _authRepository.RegisterAsync(request);
 
@@ -37,7 +46,15 @@ namespace AuthDotnetCoreJwt.Controllers
         public async Task<IActionResult> Login([FromBody] LoginRequestDto request)
         {
             if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+                return BadRequest(new ApiResponseDto<object>
+                {
+                    Success = false,
+                    Message = "Validation failed",
+                    Errors = ModelState.Values
+                    .SelectMany(v => v.Errors)
+                    .Select(e => e.ErrorMessage)
+                    .ToList()
+                });
 
             var response = await _authRepository.LoginAsync(request);
 

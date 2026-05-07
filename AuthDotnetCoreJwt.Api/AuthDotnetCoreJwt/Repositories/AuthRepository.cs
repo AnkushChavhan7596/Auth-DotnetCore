@@ -1,5 +1,6 @@
 ﻿using AuthDotnetCoreJwt.Models.Domain;
-using AuthDotnetCoreJwt.Models.Dto;
+using AuthDotnetCoreJwt.Models.Dto.Auth;
+using AuthDotnetCoreJwt.Models.Dto.Common;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
@@ -31,15 +32,16 @@ namespace AuthDotnetCoreJwt.Repositories
         // =========================
         // REGISTER
         // =========================
-        public async Task<AuthResponseDto> RegisterAsync(RegisterRequestDto req)
+        public async Task<ApiResponseDto<object>> RegisterAsync(RegisterRequestDto req)
         {
             var existingUser = await _userManager.FindByEmailAsync(req.Email);
 
             if (existingUser != null)
             {
-                return new AuthResponseDto
+                return new ApiResponseDto<object>
                 {
                     Success = false,
+                    Message = "Registration failed",
                     Errors = new List<string> { "User already exists" }
                 };
             }
@@ -55,17 +57,16 @@ namespace AuthDotnetCoreJwt.Repositories
 
             if (!result.Succeeded)
             {
-                return new AuthResponseDto
+                return new ApiResponseDto<object>
                 {
                     Success = false,
+                    Message = "Registration failed",
                     Errors = result.Errors.Select(e => e.Description).ToList()
                 };
             }
 
             // assign default role
             await _userManager.AddToRoleAsync(user, "User");
-
-            //var token = await GenerateJwtToken(user);
 
             // Generate email verification url
             var verifyUrl = await GetEmailVerificationUrl(user);
@@ -76,17 +77,17 @@ namespace AuthDotnetCoreJwt.Repositories
                 $"Click here to verify your email: {verifyUrl}"
             );
 
-            return new AuthResponseDto
+            return new ApiResponseDto<object>
             {
                 Success = true,
-                Errors = new List<string> { "Registration successful. Please verify your email." }
+                Message = "Registration successful. Please verify your email."
             };
         }
 
         // =========================
         // LOGIN
         // =========================
-        public async Task<AuthResponseDto> LoginAsync(LoginRequestDto req)
+        public async Task<ApiResponseDto<object>> LoginAsync(LoginRequestDto req)
         {
             var user = await _userManager.FindByEmailAsync(req.Email);
 
@@ -94,9 +95,10 @@ namespace AuthDotnetCoreJwt.Repositories
             {
                 _logger.LogWarning("Login failed: User not found for {Email}", req.Email);
 
-                return new AuthResponseDto
+                return new ApiResponseDto<object>
                 {
                     Success = false,
+                    Message = "Login failed",
                     Errors = new List<string> { "Invalid credentials" }
                 };
             }
@@ -107,39 +109,63 @@ namespace AuthDotnetCoreJwt.Repositories
             {
                 _logger.LogWarning("Invalid password attempt for {Email}", req.Email);
 
-                return new AuthResponseDto
+                return new ApiResponseDto<object>
                 {
                     Success = false,
+                    Message = "Login failed",
                     Errors = new List<string> { "Invalid credentials" }
                 };
             }
 
             if (!user.EmailConfirmed)
             {
-                return new AuthResponseDto
+                return new ApiResponseDto<object>
                 {
                     Success = false,
+                    Message = "Login failed",
                     Errors = new List<string> { "Email not verified" }
                 };
             }
 
             var token = await GenerateJwtToken(user);
 
-            return await GenerateAuthResponse(user, token);
+            var roles = await _userManager.GetRolesAsync(user);
+            var expiryDays = int.Parse(_config["Jwt:ExpiryInDays"] ?? "7");
+            var expiry = DateTime.UtcNow.AddDays(expiryDays);
+
+            var userDto = new AppUserDto
+            {
+                Id = user.Id,
+                Email = user.Email,
+                FullName = user.FullName,
+                Roles = roles.ToList()
+            };
+
+            return new ApiResponseDto<object>
+            {
+                Success = true,
+                Message = "Login Successful",
+                Data = new {
+                    Token = token,
+                    ExpiresAt = expiry,
+                    User = userDto
+                }
+            };
         }
 
         // =========================
         // Email Confirmation
         // =========================
-        public async Task<AuthResponseDto> ConfirmEmailAsync(string email, string token)
+        public async Task<ApiResponseDto<object>> ConfirmEmailAsync(string email, string token)
         {
             var user = await _userManager.FindByEmailAsync(email);
 
             if (user == null)
             {
-                return new AuthResponseDto
+                return new ApiResponseDto<object>
                 {
                     Success = false,
+                    Message = "Email verification failed",
                     Errors = new List<string> { "Invalid request" }
                 };
             }
@@ -150,30 +176,32 @@ namespace AuthDotnetCoreJwt.Repositories
 
             if (!result.Succeeded)
             {
-                return new AuthResponseDto
+                return new ApiResponseDto<object>
                 {
                     Success = false,
-                    Errors = new List<string> { "Invalid or expired token" }
+                    Message = "Email verification failed",
+                    Errors = new List<string> { "Invalid or token expired" }
                 };
             }
 
-            return new AuthResponseDto
+            return new ApiResponseDto<object>
             {
                 Success = true,
-                Errors = new List<string> { "Email verified successfully" }
+                Message = "Email verified successfully"
             };
         }
 
         // =========================
         // Resend Confirmation
         // =========================
-        public async Task<AuthResponseDto> ResendVerificationAsync(string email)
+        public async Task<ApiResponseDto<object>> ResendVerificationAsync(string email)
         {
             if (string.IsNullOrWhiteSpace(email))
             {
-                return new AuthResponseDto
+                return new ApiResponseDto<object>
                 {
                     Success = false,
+                    Message = "Email verification failed",
                     Errors = new List<string> { "Email is required" }
                 };
             }
@@ -182,19 +210,20 @@ namespace AuthDotnetCoreJwt.Repositories
 
             if (user == null)
             {
-                // security best practice (do not reveal user existence)
-                return new AuthResponseDto
+                return new ApiResponseDto<object>
                 {
                     Success = true,
+                    Message = "Verification email processed",
                     Errors = new List<string> { "If email exists, verification link has been sent." }
                 };
             }
 
             if (user.EmailConfirmed)
             {
-                return new AuthResponseDto
+                return new ApiResponseDto<object>
                 {
                     Success = false,
+                    Message = "Email already verified",
                     Errors = new List<string> { "Email is already verified." }
                 };
             }
@@ -208,10 +237,10 @@ namespace AuthDotnetCoreJwt.Repositories
                 $"Click here to verify your email: {verifyUrl}"
             );
 
-            return new AuthResponseDto
+            return new ApiResponseDto<object>
             {
                 Success = true,
-                Errors = new List<string> { "Verification email sent." }
+                Message = "Verification email sent successfully",
             };
         }
 
@@ -249,32 +278,6 @@ namespace AuthDotnetCoreJwt.Repositories
             );
 
             return new JwtSecurityTokenHandler().WriteToken(token);
-        }
-
-        // =========================
-        // COMMON RESPONSE BUILDER
-        // =========================
-        private async Task<AuthResponseDto> GenerateAuthResponse(AppUser user, string token)
-        {
-            var roles = await _userManager.GetRolesAsync(user);
-            var expiryDays = int.Parse(_config["Jwt:ExpiryInDays"] ?? "7");
-            var expiry = DateTime.UtcNow.AddDays(expiryDays);
-
-            var userDto = new AppUserDto
-            {
-                Id = user.Id,
-                Email = user.Email,
-                FullName = user.FullName,
-                Roles = roles.ToList()
-            };
-
-            return new AuthResponseDto
-            {
-                Success = true,
-                Token = token,
-                ExpiresAt = expiry,
-                User = userDto
-            };
         }
 
         // =========================

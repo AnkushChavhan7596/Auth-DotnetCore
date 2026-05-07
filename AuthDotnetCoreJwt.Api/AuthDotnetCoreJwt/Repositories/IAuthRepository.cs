@@ -1,17 +1,18 @@
 ﻿using AuthDotnetCoreJwt.Models.Domain;
-using AuthDotnetCoreJwt.Models.Dto;
+using AuthDotnetCoreJwt.Models.Dto.Auth;
+using AuthDotnetCoreJwt.Models.Dto.Common;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AuthDotnetCoreJwt.Repositories
 {
     public interface IAuthRepository
     {
-        Task<AuthResponseDto> RegisterAsync(RegisterRequestDto req);
+        Task<ApiResponseDto<object>> RegisterAsync(RegisterRequestDto req);
 
-        Task<AuthResponseDto> LoginAsync(LoginRequestDto req);
+        Task<ApiResponseDto<object>> LoginAsync(LoginRequestDto req);
 
-        Task<AuthResponseDto> ConfirmEmailAsync(string email, string token);
+        Task<ApiResponseDto<object>> ConfirmEmailAsync(string email, string token);
 
-        Task<AuthResponseDto> ResendVerificationAsync(string email);
+        Task<ApiResponseDto<object>> ResendVerificationAsync(string email);
     }
 }
