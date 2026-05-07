@@ -14,5 +14,11 @@ namespace AuthDotnetCoreJwt.Repositories
         Task<ApiResponseDto<object>> ConfirmEmailAsync(string email, string token);
 
         Task<ApiResponseDto<object>> ResendVerificationAsync(string email);
+
+        Task<ApiResponseDto<object>> ChangePasswordAsync(string userId, ChangePasswordDto model);
+
+        Task<ApiResponseDto<object>> ForgotPasswordAsync(string email);
+
+        Task<ApiResponseDto<object>> ResetPasswordAsync(ResetPasswordDto model);
     }
 }

@@ -5,17 +5,17 @@ using MailKit.Security;
 using Microsoft.Extensions.Options;
 using MimeKit;
 
-namespace AuthDotnetCoreJwt.Repositories
+namespace AuthDotnetCoreJwt.Services
 {
 
-    public class EmailRepository : IEmailRepository
+    public class EmailService : IEmailService
     {
         private readonly EmailSettings _settings;
-        private readonly ILogger<EmailRepository> _logger;
+        private readonly ILogger<EmailService> _logger;
 
-        public EmailRepository(
+        public EmailService(
             IOptions<EmailSettings> settings,
-            ILogger<EmailRepository> logger)
+            ILogger<EmailService> logger)
         {
             _settings = settings.Value;
             _logger = logger;

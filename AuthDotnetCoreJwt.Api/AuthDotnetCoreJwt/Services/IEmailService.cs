@@ -1,6 +1,6 @@
-﻿namespace AuthDotnetCoreJwt.Repositories
+﻿namespace AuthDotnetCoreJwt.Services
 {
-    public interface IEmailRepository
+    public interface IEmailService
     {
         Task SendEmailAsync(string to, string subject, string body);
     }

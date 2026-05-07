@@ -1,8 +1,10 @@
 ﻿using AuthDotnetCoreJwt.Models.Dto.Auth;
 using AuthDotnetCoreJwt.Models.Dto.Common;
 using AuthDotnetCoreJwt.Repositories;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace AuthDotnetCoreJwt.Controllers
 {
@@ -81,12 +83,52 @@ namespace AuthDotnetCoreJwt.Controllers
             });
         }
 
-        // POST : {apibaseurl}/api/auth/resend-verification
+        // POST : {apibaseurl}/api/auth/resend-verification (email-verfication)
         [HttpPost]
         [Route("resend-verification")]
         public async Task<IActionResult> ResendVerification([FromBody] ResendVerificationRequestDto req)
         {
             var result = await _authRepository.ResendVerificationAsync(req.Email);
+
+            if (!result.Success)
+                return BadRequest(result);
+
+            return Ok(result);
+        }
+
+        // POST: {apibaseurl}/api/auth/change-password
+        [HttpPost]
+        [Route("change-password")]
+        [Authorize]
+        public async Task<IActionResult> ChangePassword(ChangePasswordDto model)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            var result = await _authRepository.ChangePasswordAsync(userId, model);
+
+            if (!result.Success)
+            {
+                return BadRequest(result);
+            }
+
+            return Ok(result);
+        }
+
+        // POST: {apibaseurl}/api/auth/forgot-password
+        [HttpPost]
+        [Route("forgot-password")]
+        [Authorize]
+        public async Task<IActionResult> ForgotPassword(ForgotPasswordDto model)
+        {
+            var result = await _authRepository.ForgotPasswordAsync(model.Email);
+
+            return Ok(result);
+        }
+
+        [HttpPost("reset-password")]
+        public async Task<IActionResult> ResetPassword(ResetPasswordDto model)
+        {
+            var result = await _authRepository.ResetPasswordAsync(model);
 
             if (!result.Success)
                 return BadRequest(result);

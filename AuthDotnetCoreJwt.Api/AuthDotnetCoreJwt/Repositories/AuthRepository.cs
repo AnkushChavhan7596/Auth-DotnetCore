@@ -1,6 +1,7 @@
 ﻿using AuthDotnetCoreJwt.Models.Domain;
 using AuthDotnetCoreJwt.Models.Dto.Auth;
 using AuthDotnetCoreJwt.Models.Dto.Common;
+using AuthDotnetCoreJwt.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
@@ -13,19 +14,19 @@ namespace AuthDotnetCoreJwt.Repositories
     {
         private readonly UserManager<AppUser> _userManager;
         private readonly IConfiguration _config;
-        private readonly IEmailRepository _emailRepository;
+        private readonly IEmailService _emailService;
         private readonly ILogger<AuthRepository> _logger;
 
         public AuthRepository(
             UserManager<AppUser> userManager,
             IConfiguration config,
             ILogger<AuthRepository> logger,
-            IEmailRepository emailRepository)
+            IEmailService emailService)
         {
             _userManager = userManager;
             _config = config;
             _logger = logger;
-            _emailRepository = emailRepository;
+            _emailService = emailService;
         }
 
 
@@ -71,7 +72,7 @@ namespace AuthDotnetCoreJwt.Repositories
             // Generate email verification url
             var verifyUrl = await GetEmailVerificationUrl(user);
 
-            await _emailRepository.SendEmailAsync(
+            await _emailService.SendEmailAsync(
                 user.Email,
                 "Verify your email",
                 $"Click here to verify your email: {verifyUrl}"
@@ -231,7 +232,7 @@ namespace AuthDotnetCoreJwt.Repositories
             // Generate email verification url
             var verifyUrl = await GetEmailVerificationUrl(user);
 
-            await _emailRepository.SendEmailAsync(
+            await _emailService.SendEmailAsync(
                 user.Email,
                 "Verify your email",
                 $"Click here to verify your email: {verifyUrl}"
@@ -241,6 +242,118 @@ namespace AuthDotnetCoreJwt.Repositories
             {
                 Success = true,
                 Message = "Verification email sent successfully",
+            };
+        }
+
+        // =========================
+        // CHANGE PASSWORD
+        // =========================
+        public async Task<ApiResponseDto<object>> ChangePasswordAsync(string userId, ChangePasswordDto model)
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+
+            if (user == null)
+            {
+                return new ApiResponseDto<object>
+                {
+                    Success = false,
+                    Message = "User not found",
+                    Errors = new List<string> { "Invalid user" }
+                };
+            };
+
+            var result = await _userManager.ChangePasswordAsync(
+                user,
+                model.CurrentPassword,
+                model.NewPassword);
+
+            if (!result.Succeeded)
+            {
+                return new ApiResponseDto<object>
+                {
+                    Success = false,
+                    Message = "Password change failed",
+                    Errors = result.Errors.Select(e => e.Description).ToList()
+                };
+            }
+
+            return new ApiResponseDto<object>
+            {
+                Success = true,
+                Message = "Password changed successfully"
+            };
+        }
+
+        // =========================
+        // FORGOT PASSWORD
+        // =========================
+        public async Task<ApiResponseDto<object>> ForgotPasswordAsync(string email)
+        {
+            var user = await _userManager.FindByEmailAsync(email);
+
+            if (user == null)
+            {
+                return new ApiResponseDto<object>
+                {
+                    Success = true,
+                    Message = "If email exists, reset link sent"
+                };
+            }
+
+            var resetUrl = await GetResetPasswordUrl(user);
+
+            await _emailService.SendEmailAsync(
+                email,
+                "Reset Password",
+                $"Click here to reset password: {resetUrl}"
+            );
+
+            return new ApiResponseDto<object>
+            {
+                Success = true,
+                Message = "If email exists, reset link sent"
+            };
+        }
+
+        // =========================
+        // RESET PASSWORD
+        // =========================
+        public async Task<ApiResponseDto<object>> ResetPasswordAsync(ResetPasswordDto model)
+        {
+            var user = await _userManager.FindByEmailAsync(model.Email);
+
+            if (user == null)
+            {
+                return new ApiResponseDto<object>
+                {
+                    Success = false,
+                    Message = "Invalid request",
+                    Errors = new List<string> { "User not found" }
+                };
+            }
+
+            var decodedToken = Uri.UnescapeDataString(model.Token);
+
+            var result = await _userManager.ResetPasswordAsync(
+                user,
+                decodedToken,
+                model.NewPassword
+            );
+
+            if (!result.Succeeded)
+            {
+                return new ApiResponseDto<object>
+                {
+                    Success = false,
+                    Message = "Reset failed",
+                    Errors = result.Errors.Select(e => e.Description).ToList()
+                };
+            }
+
+            return new ApiResponseDto<object>
+            {
+                Success = true,
+                Message = "Password reset successfully"
             };
         }
 
@@ -289,6 +402,20 @@ namespace AuthDotnetCoreJwt.Repositories
 
             var verifyUrl = $"{_config["App:BaseUrl"]}/api/auth/confirm-email?email={user.Email}&token={encodedToken}";
             return verifyUrl;
+        }
+
+        // =========================
+        // Get Reset Password URL
+        // =========================
+        private async Task<string> GetResetPasswordUrl(AppUser? user)
+        {
+             var resetPasswordToken = await _userManager.GeneratePasswordResetTokenAsync(user);
+
+            var encodedToken = Uri.EscapeDataString(resetPasswordToken);
+
+            var resetUrl =
+                $"{_config["App:BaseUrl"]}/reset-password?email={user.Email}&token={encodedToken}";
+            return resetUrl;
         }
     }
 }

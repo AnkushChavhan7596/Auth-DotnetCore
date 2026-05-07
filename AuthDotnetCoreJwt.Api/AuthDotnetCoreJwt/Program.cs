@@ -4,6 +4,7 @@ using AuthDotnetCoreJwt.Middleware;
 using AuthDotnetCoreJwt.Models.Domain;
 using AuthDotnetCoreJwt.Models.Dto.Auth;
 using AuthDotnetCoreJwt.Repositories;
+using AuthDotnetCoreJwt.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -56,7 +57,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 builder.Services.AddScoped<IAuthRepository, AuthRepository>();
-builder.Services.AddScoped<IEmailRepository, EmailRepository>();
+builder.Services.AddScoped<IEmailService, EmailService>();
 
 builder.Services.Configure<EmailSettings>(
     builder.Configuration.GetSection("EmailSettings"));
