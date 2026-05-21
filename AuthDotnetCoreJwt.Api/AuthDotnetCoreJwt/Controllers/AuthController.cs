@@ -66,6 +66,7 @@ namespace AuthDotnetCoreJwt.Controllers
             return Ok(response);
         }
 
+        // resend verification and register email verification email to this call
         // GET : {apibaseurl}/api/auth/confirm-email
         [HttpGet]
         [Route("confirm-email")]
@@ -125,6 +126,7 @@ namespace AuthDotnetCoreJwt.Controllers
             return Ok(result);
         }
 
+        // forgot passward reset link to this call
         [HttpPost("reset-password")]
         public async Task<IActionResult> ResetPassword(ResetPasswordDto model)
         {

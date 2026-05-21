@@ -409,7 +409,7 @@ namespace AuthDotnetCoreJwt.Repositories
         // =========================
         private async Task<string> GetResetPasswordUrl(AppUser? user)
         {
-             var resetPasswordToken = await _userManager.GeneratePasswordResetTokenAsync(user);
+            var resetPasswordToken = await _userManager.GeneratePasswordResetTokenAsync(user);
 
             var encodedToken = Uri.EscapeDataString(resetPasswordToken);
 
